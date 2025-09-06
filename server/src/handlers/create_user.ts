@@ -1,20 +1,31 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type CreateUserInput, type User } from '../schema';
 
 export async function createUser(input: CreateUserInput, creatorRole: string): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to create a new user in the database.
-    // Should validate that the creator has admin role before allowing user creation.
-    // Should hash the password before storing and ensure username/email uniqueness.
-    if (creatorRole !== 'admin') {
-        throw new Error('Only admins can create users');
-    }
-    
-    return Promise.resolve({
-        id: 1, // Placeholder ID
+  // Validate that only admins can create users
+  if (creatorRole !== 'admin') {
+    throw new Error('Only admins can create users');
+  }
+
+  try {
+    // Hash the password using Bun's built-in password hashing
+    const passwordHash = await Bun.password.hash(input.password);
+
+    // Insert the new user into the database
+    const result = await db.insert(usersTable)
+      .values({
         username: input.username,
         email: input.email,
-        password_hash: 'hashed_password_placeholder',
-        role: input.role,
-        created_at: new Date()
-    } as User);
+        password_hash: passwordHash,
+        role: input.role
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('User creation failed:', error);
+    throw error;
+  }
 }

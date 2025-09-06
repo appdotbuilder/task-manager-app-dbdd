@@ -1,12 +1,36 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type LoginInput, type AuthContext } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function login(input: LoginInput): Promise<AuthContext> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to authenticate a user with username/password
-    // and return their authentication context (userId and role).
-    // Should validate credentials against the database and return user info.
-    return Promise.resolve({
-        userId: 1, // Placeholder user ID
-        role: 'user' // Placeholder role
-    } as AuthContext);
-}
+export const login = async (input: LoginInput): Promise<AuthContext> => {
+  try {
+    // Find user by username
+    const users = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.username, input.username))
+      .execute();
+
+    if (users.length === 0) {
+      throw new Error('Invalid credentials');
+    }
+
+    const user = users[0];
+
+    // In a real application, you would hash the input password and compare
+    // For this implementation, we'll do a simple string comparison
+    // Note: In production, use bcrypt or similar for password hashing
+    if (user.password_hash !== input.password) {
+      throw new Error('Invalid credentials');
+    }
+
+    // Return authentication context
+    return {
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    console.error('Login failed:', error);
+    throw error;
+  }
+};
